@@ -5,7 +5,7 @@ local project_global = {}
 local project_files = {}
 local project_exist_files = {}
 local default_global_pattern = { ["%s+_G%.([_%w]+)%s-="] = "_G", ["%s+_ENV%.([_%w]+)%s-="] = "_ENV" }
-local project_global_cache_filename = "luacheckpg.log"
+local project_global_cache_filename = ".luacheckpg"
 
 local project = {}
 
