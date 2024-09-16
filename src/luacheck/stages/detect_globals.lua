@@ -41,6 +41,8 @@ local action_codes = {
    access = "3"
 }
 
+local project_global_msgs = {}
+
 -- `index` describes an indexing, where `index[1]` is a global node
 -- and other items describe keys: each one is a string node, "not_string",
 -- or "unknown". `node` is literal base node that's indexed.
@@ -57,7 +59,11 @@ local function warn_global(chstate, node, index, is_lhs, is_top_line)
       local global_name = global[1]
       local global_type = project.get_global_data(global_name)
       if global_type ~= nil then
-         print(string.format("project global! %s: %s", global_type, global_name))
+         local msg = string.format("project global! %s: %s", global_type, global_name)
+         if project_global_msgs[msg] == nil then
+            print(msg)
+            project_global_msgs[msg] = true
+         end
          return
       end
    end
