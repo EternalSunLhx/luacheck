@@ -436,7 +436,8 @@ function ConfigStack:get_top_options()
       cache = false,
       jobs = false,
       include_files = {},
-      exclude_files = {}
+      exclude_files = {},
+      global_pattern = nil,
    }
 
    local current_dir = fs.get_current_dir()
@@ -447,6 +448,10 @@ function ConfigStack:get_top_options()
          if conf.options[option] ~= nil then
             res[option] = conf.options[option]
          end
+      end
+
+      if conf.options.global_pattern ~= nil then
+         res.global_pattern = conf.options.global_pattern
       end
 
       -- It's not immediately obvious relatively to which config formatter modules

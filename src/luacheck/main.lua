@@ -186,6 +186,8 @@ Links:
 
    parser:mutex(config_opt, no_config_opt)
 
+   parser:option("--projectdir", "Path to project directory. Check global module or class."):argname "<projectdir>"
+
    local default_config_opt = parser:option("--default-config", ("Path to configuration file to use if --[no-]config "..
       "is not used and project-specific %s is not found. (default: %s)"):format(
          config.default_path, default_global_path or "could not detect"))
@@ -295,6 +297,11 @@ local function main()
       else
          critical(err)
       end
+   end
+
+   if args.projectdir then
+      local project = require "luacheck.project"
+      project.init(args.projectdir, checker._config_stack:get_top_options().global_pattern)
    end
 
    local inputs = {}

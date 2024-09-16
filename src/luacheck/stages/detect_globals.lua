@@ -1,4 +1,5 @@
 local utils = require "luacheck.utils"
+local project = require "luacheck.project"
 
 local stage = {}
 
@@ -50,6 +51,16 @@ local action_codes = {
 local function warn_global(chstate, node, index, is_lhs, is_top_line)
    local global = index[1]
    local action = is_lhs and (#index == 1 and "set" or "mutate") or "access"
+
+   if action == "access" then
+      -- check project global
+      local global_name = global[1]
+      local global_type = project.get_global_data(global_name)
+      if global_type ~= nil then
+         print(string.format("project global! %s: %s", global_type, global_name))
+         return
+      end
+   end
 
    local indexing
 
