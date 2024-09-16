@@ -1,7 +1,7 @@
 local package_name = "luacheck"
 local package_version = "dev"
 local rockspec_revision = "1"
-local github_account_name = "lunarmodules"
+local github_account_name = "EternalSunLhx"
 local github_repo_name = package_name
 
 rockspec_format = "3.0"
@@ -65,6 +65,7 @@ build = {
       ["luacheck.options"] = "src/luacheck/options.lua",
       ["luacheck.parser"] = "src/luacheck/parser.lua",
       ["luacheck.profiler"] = "src/luacheck/profiler.lua",
+      ["luacheck.project"] = "src/luacheck/project.lua",
       ["luacheck.runner"] = "src/luacheck/runner.lua",
       ["luacheck.serializer"] = "src/luacheck/serializer.lua",
       ["luacheck.stages"] = "src/luacheck/stages/init.lua",
