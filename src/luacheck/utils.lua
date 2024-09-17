@@ -374,4 +374,54 @@ function utils.array_of(type_)
    end
 end
 
+local tSaveTabMap = {}
+
+local function __FormatString(sValue)
+    return (string.gsub(sValue, "\"", "\\\""))
+end
+
+local function __FixString(sValue, nDeep)
+    if nDeep == nil then
+        return sValue
+    end
+
+    return string.format('"%s"', __FormatString(sValue))
+end
+
+local __ToString = nil
+__ToString = function(aValue, nDeep, sTabName)
+    local sValueType = type(aValue)
+    if sValueType ~= "table" then
+        if sValueType == "string" then
+            return __FixString(aValue, nDeep)
+        end
+        return tostring(aValue)
+    end
+
+    local sExistTabName = tSaveTabMap[aValue]
+    if sExistTabName then
+        return string.format("table : [\"%s\"]", sExistTabName)
+    end
+    tSaveTabMap[aValue] = sTabName or "[root]"
+
+    nDeep = nDeep or 1
+    local sSpace = string.rep("\t", nDeep)
+    local sTabSpace = string.rep("\t", nDeep - 1)
+
+    local sValue = string.format("\n%s{\n", sTabSpace)
+    local tResult = {}
+    for aKey, aSubValue in pairs(aValue) do
+        local sFmt = type(aKey) == "number" and "%s[%s] = " or "%s[\"%s\"] = "
+        local sRet = string.format(sFmt, sSpace, aKey)
+        sRet = string.format("%s%s", sRet, __ToString(aSubValue, nDeep + 1, aKey)) 
+        table.insert(tResult, sRet)
+    end
+    return string.format("%s%s\n%s}", sValue, table.concat(tResult, ",\n"), sTabSpace)
+end
+
+function utils.table2string(aValue, sTableName, nDeep)
+    tSaveTabMap = {}
+    return __ToString(aValue, nDeep, sTableName)
+end
+
 return utils
