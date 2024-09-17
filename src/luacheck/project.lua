@@ -123,7 +123,7 @@ local function try_parse_normal_global_data(var_block, value_block, is_local_env
     if value_block == nil or value_block.tag == "Nil" then return end
 
     if not is_local_env then
-        add_global(normal_global, var_block[1], "_ENV")
+        add_global(normal_global, var_block[1], "non-standard")
     end
 
     if value_block.tag == "Function" or value_block.tag == "Table" then
