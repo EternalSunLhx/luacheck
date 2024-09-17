@@ -1,5 +1,6 @@
 local fs = require "luacheck.fs"
 local utils = require "luacheck.utils"
+local globbing = require "luacheck.globbing"
 
 local project_global = {}
 local project_files = {}
@@ -98,10 +99,28 @@ local function merge_and_clean_project_global()
     end
 end
 
-local function scan_project_global(abs_project_dir, global_pattern)
+local function matches_any(globs, filename)
+    for _, glob in ipairs(globs) do
+        if globbing.match(glob, filename) then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function is_filename_included(top_opts, abs_filename)
+    return not matches_any(top_opts.exclude_files, abs_filename) and (
+       #top_opts.include_files == 0 or matches_any(top_opts.include_files, abs_filename))
+end
+
+local function scan_project_global(abs_project_dir, top_opts)
     local lua_files = fs.extract_files(abs_project_dir, ".*%.lua$")
+    local global_pattern = top_opts.global_pattern
     for _, lua_filepath in ipairs(lua_files) do
-        try_match_project_file_global(lua_filepath, global_pattern)
+        if is_filename_included(top_opts, lua_filepath) then
+            try_match_project_file_global(lua_filepath, global_pattern)
+        end
     end
 
     merge_and_clean_project_global()
@@ -162,11 +181,11 @@ local function save_project_global_cache(cache_filepath)
     file_handle:close()
 end
 
-function project.init(project_dir, global_pattern)
+function project.init(project_dir, top_opts)
     local abs_project_dir = fs.normalize(fs.join(fs.get_current_dir(), project_dir))
     local cache_filepath = fs.join(abs_project_dir, project_global_cache_filename)
     try_init_project_files(cache_filepath)
-    scan_project_global(abs_project_dir, global_pattern)
+    scan_project_global(abs_project_dir, top_opts)
     save_project_global_cache(cache_filepath)
 end
 

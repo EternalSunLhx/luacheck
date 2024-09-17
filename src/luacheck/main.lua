@@ -301,7 +301,7 @@ local function main()
 
    if args.projectdir then
       local project = require "luacheck.project"
-      project.init(args.projectdir, checker._config_stack:get_top_options().global_pattern)
+      project.init(args.projectdir, checker._config_stack:get_top_options())
    end
 
    local inputs = {}
