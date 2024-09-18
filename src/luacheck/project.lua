@@ -24,9 +24,6 @@ end
 
 local function need_do_match(exist_project_global, modify_time, global_define)
     if exist_project_global == nil then return true end
-
-    if global_define and exist_project_global.custom_global == nil then return true end
-
     return exist_project_global.modify_time < modify_time
 end
 
@@ -57,6 +54,18 @@ end
 
 local global_parse_handles = {}
 
+local function try_parse_block(block, is_local_env, normal_global, custom_global, global_define)
+    local global_parse_handle = global_parse_handles[block.tag]
+    if global_parse_handle == nil then return end
+    global_parse_handle(block, is_local_env, normal_global, custom_global, global_define)
+end
+
+local function for_each_block(block, is_local_env, normal_global, custom_global, global_define)
+    for _, sub_block in ipairs(block) do
+        try_parse_block(sub_block, is_local_env, normal_global, custom_global, global_define)
+    end
+end
+
 global_parse_handles["Local"] = function(local_block, is_local_env, normal_global, custom_global, global_define)
     if global_define == nil then return end
     local value_node = local_block[2]
@@ -64,7 +73,7 @@ global_parse_handles["Local"] = function(local_block, is_local_env, normal_globa
 
     for block_index, block in ipairs(value_node) do
         if block.tag == "Call" or block.tag == "Table" then
-            global_parse_handles[block.tag](block, true, normal_global, custom_global, global_define)
+            global_parse_handles[block.tag](block, is_local_env, normal_global, custom_global, global_define)
         end
     end
 end
@@ -87,7 +96,7 @@ global_parse_handles["Return"] = function(return_block, is_local_env, normal_glo
     if global_define == nil then return end
     for block_index, block in ipairs(return_block) do
         if block.tag == "Call" or block.tag == "Table" then
-            global_parse_handles[block.tag](block, true, normal_global, custom_global, global_define)
+            global_parse_handles[block.tag](block, is_local_env, normal_global, custom_global, global_define)
         end
     end
 end
@@ -95,6 +104,15 @@ end
 local global_types = { ["_G"] = true, ["_ENV"] = true, }
 
 local function try_parse_normal_global_index_data(set_block, normal_global)
+    local value_block = set_block[2]
+    if value_block ~= nil then
+        for _, block in ipairs(value_block) do
+            if block.tag == "Function" or block.tag == "Table" or value_block.tag == "Op" then
+                global_parse_handles[block.tag](block, is_local_env, normal_global, custom_global, global_define)
+            end
+        end
+    end
+
     local var_define_block = set_block[1]
     if #var_define_block ~= 1 then return false end
 
@@ -103,19 +121,13 @@ local function try_parse_normal_global_index_data(set_block, normal_global)
 
     local global_type_node = var_define_block[1]
     local global_type = global_type_node[1]
-    if global_type_node.tag ~= "Id" and global_types[global_type] == nil then return false end
+    if global_type_node.tag ~= "Id" or global_types[global_type] == nil then return false end
 
-    add_global(normal_global, var_define_block[2][1], global_type)
+    local global_name_node = var_define_block[2]
+    if global_name_node.tag ~= "String" then return false end
 
-    local value_block = set_block[2]
-    if value_block ~= nil then
-        for _, block in ipairs(value_block) do
-            if block.tag == "Function" or block.tag == "Table" then
-                global_parse_handles[block.tag](block, true, normal_global, custom_global, global_define)
-            end
-        end
-    end
-    
+    add_global(normal_global, global_name_node[1], global_type)
+
     return true
 end
 
@@ -123,11 +135,13 @@ local function try_parse_normal_global_data(var_block, value_block, is_local_env
     if value_block == nil or value_block.tag == "Nil" then return end
 
     if not is_local_env then
-        add_global(normal_global, var_block[1], "non-standard")
+        if var_block.tag == "Id" then
+            add_global(normal_global, var_block[1], "non-standard")
+        end
     end
 
-    if value_block.tag == "Function" or value_block.tag == "Table" then
-        global_parse_handles[value_block.tag](value_block, true, normal_global, custom_global, global_define)
+    if value_block.tag == "Function" or value_block.tag == "Table" or value_block.tag == "Op" then
+        try_parse_block(value_block, is_local_env, normal_global, custom_global, global_define)
         return
     end
 end
@@ -147,45 +161,59 @@ end
 
 global_parse_handles["Function"] = function(function_block, is_local_env, normal_global, custom_global, global_define)
     local function_body_block = function_block[2]
-    for _, block in ipairs(function_body_block) do
-        local global_parse_handle = global_parse_handles[block.tag]
-        if global_parse_handle ~= nil then
-            global_parse_handle(block, true, normal_global, custom_global, global_define)
-        end
-    end
+    for_each_block(function_body_block, is_local_env, normal_global, custom_global, global_define)
 end
 
 global_parse_handles["Table"] = function(table_block, is_local_env, normal_global, custom_global, global_define)
-    for _, item_block in ipairs(table_block) do
-        local global_parse_handle = global_parse_handles[item_block.tag]
-        if global_parse_handle ~= nil then
-            global_parse_handle(item_block, true, normal_global, custom_global, global_define)
-        end
-    end
+    for_each_block(table_block, is_local_env, normal_global, custom_global, global_define)
 end
 
 global_parse_handles["Pair"] = function(pair_block, is_local_env, normal_global, custom_global, global_define)
     local key_block = pair_block[1]
-    local global_parse_handle = global_parse_handles[key_block.tag]
-    if global_parse_handle ~= nil then
-        global_parse_handle(key_block, true, normal_global, custom_global, global_define)
-    end
+    try_parse_block(key_block, is_local_env, normal_global, custom_global, global_define)
 
     local value_block = pair_block[2]
-    global_parse_handle = global_parse_handles[value_block.tag]
-    if global_parse_handle ~= nil then
-        global_parse_handle(value_block, true, normal_global, custom_global, global_define)
-    end
+    try_parse_block(value_block, is_local_env, normal_global, custom_global, global_define)
 end
 
 global_parse_handles["Localrec"] = function(localrec_block, is_local_env, normal_global, custom_global, global_define)
     local value_block = localrec_block[2]
     if value_block == nil then return end
+    for_each_block(value_block, is_local_env, normal_global, custom_global, global_define)
+end
 
-    for _, block in ipairs(value_block) do
-        local global_parse_handle = global_parse_handles[block.tag]
-        if global_parse_handle ~= nil then
-            global_parse_handle(block, true, normal_global, custom_global, global_define)
+global_parse_handles["If"] = function(if_block, is_local_env, normal_global, custom_global, global_define)
+    for _, block in ipairs(if_block) do
+        if block.tag == nil then
+            for_each_block(block, is_local_env, normal_global, custom_global, global_define)
+        end
+    end
+end
+
+global_parse_handles["While"] = function(while_block, is_local_env, normal_global, custom_global, global_define)
+    local while_body_block = while_block[2]
+    for_each_block(while_body_block, is_local_env, normal_global, custom_global, global_define)
+end
+
+global_parse_handles["Fornum"] = function(for_block, is_local_env, normal_global, custom_global, global_define)
+    for _, block in ipairs(for_block) do
+        if block.tag == nil then
+            for_each_block(block, is_local_env, normal_global, custom_global, global_define)
+        end
+    end
+end
+
+global_parse_handles["Forin"] = global_parse_handles["Fornum"]
+
+global_parse_handles["Repeat"] = function(repeat_block, is_local_env, normal_global, custom_global, global_define)
+    local repeat_body_block = repeat_block[1]
+    for_each_block(repeat_body_block, is_local_env, normal_global, custom_global, global_define)
+end
+
+global_parse_handles["Op"] = function(op_block, is_local_env, normal_global, custom_global, global_define)
+    for block_index, block in ipairs(op_block) do
+        if block_index ~= 1 then
+            try_parse_block(block, is_local_env, normal_global, custom_global, global_define)
         end
     end
 end
@@ -200,7 +228,7 @@ local function check_is_local_env(block)
 
     local var_name = var_name_node[1]
 
-    return var_name == "_ENV" or var_name == "_G"
+    return var_name == "_ENV"
 end
 
 local function try_match_project_file_global(filepath, global_define)
@@ -319,7 +347,7 @@ local function table2string(t)
     local custom_global_contents = {}
 
     for filepath, global_data in utils.sorted_pairs(project_files) do
-        local global_content = string.format("    [\"%s\"] = {\n", filepath)
+        local global_content = string.format("    [\"%s\"] = {\n", string.gsub(filepath, "\\", "\\\\"))
         global_content = global_content .. string.format("        modify_time = %d,\n", global_data.modify_time)
         
         local normal_global = globals2string(global_data, "normal_global", custom_global_contents)
