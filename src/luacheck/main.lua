@@ -31,8 +31,11 @@ Links:
       :help_max_width(80)
 
    parser:argument("files", "List of files, directories and rockspecs to check. Pass '-' to check stdin.")
-      :args "+"
+      :args "*"
       :argname "<file>"
+
+   parser:option("--initproject", "Initialize project global cache file. Reduce the waiting time for generating global cache file for the first time")
+      :argname "<initproject>"
 
    parser:group("Options for filtering warnings",
       parser:flag("-g --no-global", "Filter out warnings related to global variables. " ..
@@ -296,6 +299,23 @@ local function main()
          os.exit(exit_codes.critical)
       else
          critical(err)
+      end
+   end
+
+   if args.initproject then
+      local project = require "luacheck.project"
+      local ok, err = utils.try(project.init_project, args.initproject, checker._config_stack:get_top_options())
+      if ok then
+         os.exit(exit_codes.ok)
+      else
+         critical(err)
+      end
+      return
+   else
+      if args.files == nil or not next(args.files) then
+         io.stderr:write(("%s\n\nError: %s\n"):format(parser:get_usage(), "missing argument: <files>"))
+         os.exit(exit_codes.critical)
+         return
       end
    end
 
