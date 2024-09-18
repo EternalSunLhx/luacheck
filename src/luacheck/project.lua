@@ -385,6 +385,14 @@ function project.init(project_dir, top_opts)
     save_project_global_cache(cache_filepath)
 end
 
+function project.init_project(project_dir, top_opts)
+    local abs_project_dir = fs.normalize(fs.join(fs.get_current_dir(), project_dir))
+    local cache_filepath = fs.join(abs_project_dir, project_global_cache_filename)
+    scan_project_global(abs_project_dir, top_opts)
+    save_project_global_cache(cache_filepath)
+    print("init project global cache file done!")
+end
+
 function project.get_global_data(global_name)
     return project_global[global_name]
 end
