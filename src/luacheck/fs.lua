@@ -3,6 +3,10 @@ local fs = {}
 local lfs = require "lfs"
 local utils = require "luacheck.utils"
 
+local function at(s,i)
+   return string.sub(s,i,i)
+end
+
 local function ensure_dir_sep(path)
    if path:sub(-1) ~= utils.dir_sep then
       return path .. utils.dir_sep
@@ -37,29 +41,50 @@ function fs.is_absolute(path)
 end
 
 function fs.normalize(path)
+   -- Split path into anchor and relative path.
+   local anchor = ''
    if utils.is_windows then
-      path = path:lower()
-   end
-   local base, rest = fs.split_base(path)
-   rest = rest:gsub("[/\\]", utils.dir_sep)
-
-   local parts = {}
-
-   for part in rest:gmatch("[^"..utils.dir_sep.."]+") do
-      if part ~= "." then
-         if part == ".." and #parts > 0 and parts[#parts] ~= ".." then
-            parts[#parts] = nil
-         else
-            parts[#parts + 1] = part
-         end
-      end
-   end
-
-   if base == "" and #parts == 0 then
-      return "."
+       if path:match '^\\\\' then -- UNC
+           anchor = '\\\\'
+           path = path:sub(3)
+       elseif utils.seps[at(path, 1)] then
+           anchor = '\\'
+           path = path:sub(2)
+       elseif at(path, 2) == ':' then
+           anchor = path:sub(1, 2)
+           path = path:sub(3)
+           if utils.seps[at(path, 1)] then
+               anchor = anchor..'\\'
+               path = path:sub(2)
+           end
+       end
+       path = path:gsub('/','\\')
    else
-      return base..table.concat(parts, utils.dir_sep)
+       -- According to POSIX, in path start '//' and '/' are distinct,
+       -- but '///+' is equivalent to '/'.
+       if path:match '^//' and at(path, 3) ~= '/' then
+           anchor = '//'
+           path = path:sub(3)
+       elseif at(path, 1) == '/' then
+           anchor = '/'
+           path = path:match '^/*(.*)$'
+       end
    end
+   local parts = {}
+   for part in path:gmatch('[^'..utils.dir_sep..']+') do
+       if part == '..' then
+           if #parts ~= 0 and parts[#parts] ~= '..' then
+               table.remove(parts)
+           else
+            table.insert(parts, part)
+           end
+       elseif part ~= '.' then
+         table.insert(parts, part)
+       end
+   end
+   path = anchor..table.concat(parts, utils.dir_sep)
+   if path == '' then path = '.' end
+   return path
 end
 
 local function join_two_paths(base, path)
@@ -101,6 +126,19 @@ end
 
 function fs.is_file(path)
    return lfs.attributes(path, "mode") == "file"
+end
+
+function fs.abspath(path, pwd)
+   local use_pwd = pwd ~= nil
+   if not use_pwd and not fs.get_current_dir() then return path end
+   path = path:gsub('[\\/]$','')
+   pwd = pwd or fs.get_current_dir()
+   if not fs.is_absolute(path) then
+      path = fs.join(pwd, path)
+   elseif utils.is_windows and not use_pwd and at(path,2) ~= ':' and at(path,2) ~= '\\' then
+      path = pwd:sub(1,2) .. path -- attach current drive to path like '\\fred.txt'
+   end
+   return fs.normalize(path)
 end
 
 -- Searches for file starting from path, going up until the file
