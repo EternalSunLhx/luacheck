@@ -1,11 +1,21 @@
+local fs = require "luacheck.fs"
 local utils = require "luacheck.utils"
 
 local check_state = {}
 
 local CheckState = utils.class()
 
-function CheckState:__init(source_bytes)
+function CheckState:__init(source_bytes, filepath)
    self.source_bytes = source_bytes
+
+   if filepath then
+      if not fs.is_absolute(filepath) then
+         filepath = fs.abspath(filepath)
+      end
+   
+      self.filepath = filepath
+   end
+   
    self.warnings = {}
 end
 
@@ -59,8 +69,8 @@ function CheckState:warn_value(code, value, warning)
    return warning
 end
 
-function check_state.new(source_bytes)
-   return CheckState(source_bytes)
+function check_state.new(source_bytes, filepath)
+   return CheckState(source_bytes, filepath)
 end
 
 return check_state
