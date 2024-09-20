@@ -204,13 +204,14 @@ function Runner:_add_new_reports(inputs)
    for index, input in ipairs(inputs) do
       if not input.fatal and not input.cached_report then
          if input.string then
-            table.insert(sources, input.string)
+            table.insert(sources, {input.string})
             table.insert(original_indexes, index)
          else
-            local source, err = utils.read_file(input.path or input.file)
+            local filepath = input.path or input.file
+            local source, err = utils.read_file(filepath)
 
             if source then
-               table.insert(sources, source)
+               table.insert(sources, {source, filepath})
                table.insert(original_indexes, index)
             else
                input.fatal = "I/O"
