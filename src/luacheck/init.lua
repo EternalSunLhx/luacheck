@@ -37,10 +37,11 @@ local function validate_options(fname, items, opts, stds)
 end
 
 -- Returns report for a string.
-function luacheck.get_report(src)
+function luacheck.get_report(src_data)
+   local src = src_data[1]
    local msg = ("bad argument #1 to 'luacheck.get_report' (string expected, got %s)"):format(type(src))
    assert(type(src) == "string", msg)
-   return check(src)
+   return check(src, src_data[2])
 end
 
 -- Applies options to reports. Reports with .fatal field are unchanged.
@@ -87,12 +88,14 @@ function luacheck.check_strings(srcs, opts)
    validate_options("luacheck.check_strings", srcs, opts)
 
    local reports = {}
+   local src_data = {}
 
    for i, src in ipairs(srcs) do
       if type(src) == "table" and src.fatal then
          reports[i] = src
       else
-         reports[i] = luacheck.get_report(src)
+         src_data[1] = src
+         reports[i] = luacheck.get_report(src_data)
       end
    end
 
