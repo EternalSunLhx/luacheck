@@ -8,6 +8,11 @@ local utils = {}
 utils.dir_sep = package.config:sub(1,1)
 utils.is_windows = utils.dir_sep == "\\"
 
+utils.seps = { ["/"] = true, }
+if utils.is_windows then
+   utils.seps["\\"] = true
+end
+
 local bom = "\239\187\191"
 
 -- Returns all contents of file (path or file handler) or nil + error message.
