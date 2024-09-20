@@ -41,7 +41,40 @@ local action_codes = {
    access = "3"
 }
 
-local project_global_msgs = {}
+local function try_find_module_metatable_var(filepath, var_name)
+   local self_global_data = project.get_self_global_data(filepath)
+   if self_global_data == nil then return false end
+
+   local module_metatable = self_global_data.module_metatable
+   if module_metatable == nil then return false end
+
+   local global_data = project.get_global_data(module_metatable)
+   if global_data == nil then return false end
+
+   for target_filepath in pairs(global_data) do
+      local target_global_data = project.get_self_global_data(target_filepath)
+      if target_global_data ~= nil then
+         local module_var_define = target_global_data.module_var_define
+         if module_var_define ~= nil and module_var_define[var_name] then
+            return true
+         end
+      end
+   end
+end
+
+local function try_find_project_global(chstate, global)
+   local var_name = global[1]
+   local filepath = chstate.filepath
+
+   -- first, check module var define
+   local line = project.get_module_define_line(filepath, var_name)
+   if line ~= nil then return true end
+
+   -- second, check module metatable var define
+   if try_find_module_metatable_var(filepath, var_name) then return true end
+
+   return project.get_global_data(var_name) ~= nil
+end
 
 -- `index` describes an indexing, where `index[1]` is a global node
 -- and other items describe keys: each one is a string node, "not_string",
@@ -56,14 +89,7 @@ local function warn_global(chstate, node, index, is_lhs, is_top_line)
 
    if action == "access" then
       -- check project global
-      local global_name = global[1]
-      local global_type = project.get_global_data(global_name)
-      if global_type ~= nil then
-         local msg = string.format("project global! %s: %s", global_type, global_name)
-         if project_global_msgs[msg] == nil then
-            print(msg)
-            project_global_msgs[msg] = true
-         end
+      if try_find_project_global(chstate, global) then
          return
       end
    end
