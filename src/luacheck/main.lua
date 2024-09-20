@@ -304,11 +304,11 @@ local function main()
 
    if args.initproject then
       local project = require "luacheck.project"
-      local ok, err = utils.try(project.init_project, args.initproject, checker._config_stack:get_top_options())
+      local ok, error_wrapper = utils.try(project.init_project, args.initproject, checker._config_stack:get_top_options())
       if ok then
          os.exit(exit_codes.ok)
       else
-         critical(err)
+         critical(error_wrapper.err .. "\n" .. error_wrapper.traceback)
       end
       return
    else
