@@ -44,8 +44,8 @@ end
 --    `line_endings`: map from line numbers to "comment", "string", or `nil` base on
 --                    whether the line ending is within a token.
 -- If `events` array contains a syntax error, the other fields are empty tables.
-local function check(source)
-   local chstate = check_state.new(source)
+local function check(source, filepath)
+   local chstate = check_state.new(source, filepath)
    local ok, error_wrapper = utils.try(stages.run, chstate)
    local warnings, inline_options, line_lengths, line_endings
 
