@@ -13,7 +13,7 @@ function CheckState:__init(source_bytes, filepath)
          filepath = fs.abspath(filepath)
       end
    
-      self.filepath = filepath
+      self.filepath = fs.fix_filepath(filepath)
    end
    
    self.warnings = {}
