@@ -61,7 +61,13 @@ local function protected_worker_task(...)
    return true, utils.try(worker_task, ...)
 end
 
-local worker_gen = lanes.gen("*", protected_worker_task)
+local worker_gen
+
+if utils.is_windows then
+   worker_gen = lanes.gen("*", { package = {}, required = {"lfs"} }, protected_worker_task)
+else
+   worker_gen = lanes.gen("*", protected_worker_task)
+end
 
 -- Maps func over array, performing at most jobs calls in parallel.
 function multithreading.pmap(func, array, jobs)
