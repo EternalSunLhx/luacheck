@@ -379,18 +379,58 @@ local function check_local_var_define(root_local_block, local_var_define)
     end
 end
 
-local function try_match_project_file_global(filepath, global_define)
+local function check_is_nil(tabA, tabB)
+    return (tabA ~= nil and tabB == nil) or (tabA == nil and tabB ~= nil)
+end
+
+local function check_table(tabA, tabB)
+    if tabA == nil and tabB == nil then return false end
+
+    for k, v in pairs(tabA) do
+        if tabB[k] ~= v then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function compareDifferences(exist_project_global, normal_global, custom_global, module_var_define, local_var_define)
+    local old_normal_global = exist_project_global.normal_global
+    if check_is_nil(old_normal_global, normal_global) or check_table(old_normal_global, normal_global) then
+        return true
+    end
+
+    local old_custom_global = exist_project_global.custom_global
+    if check_is_nil(old_custom_global, custom_global) or check_table(old_custom_global, custom_global) then
+        return true
+    end
+
+    local old_module_var_define = exist_project_global.module_var_define
+    if check_is_nil(old_module_var_define, module_var_define) or check_table(old_module_var_define, module_var_define) then
+        return true
+    end
+
+    local old_local_var_define = exist_project_global.local_var_define
+    if check_is_nil(old_local_var_define, local_var_define) or check_table(old_local_var_define, local_var_define) then
+        return true
+    end
+
+    return false
+end
+
+local function try_match_project_file_global(filepath, global_define, check_different, skip_merge)
     local modify_time = fs.get_mtime(filepath)
     project_exist_files[filepath] = modify_time
     local exist_project_global = project_files[filepath]
-    if not need_do_match(exist_project_global, modify_time, global_define) then return end
+    if not need_do_match(exist_project_global, modify_time, global_define) then return false end
 
     exist_project_global = exist_project_global or {}
     exist_project_global.modify_time = modify_time
     project_files[filepath] = exist_project_global
 
     local ok, chstate = utils.try(try_parse_source, filepath)
-    if not ok or chstate == nil then return end
+    if not ok or chstate == nil then return false end
 
     local normal_global = {}
     local custom_global = {}
@@ -430,10 +470,17 @@ local function try_match_project_file_global(filepath, global_define)
         module_var_define = nil
     end
 
+    local need_save = false
+    if not skip_merge then
+        compareDifferences(exist_project_global, normal_global, custom_global, module_var_define, local_var_define)
+    end
+
     exist_project_global.normal_global = normal_global
     exist_project_global.custom_global = custom_global
     exist_project_global.module_var_define = module_var_define
     exist_project_global.module_metatable = module_metatable
+
+    return need_save
 end
 
 local function add_project_global(filepath, globals)
@@ -474,13 +521,22 @@ end
 local function scan_project_global(abs_project_dir, top_opts, skip_merge)
     local lua_files = fs.extract_files(abs_project_dir, ".*%.lua$")
     local global_define = top_opts.global_define
+
+    local need_save = false
+
     for _, lua_filepath in ipairs(lua_files) do
+        lua_filepath = fs.fix_filepath(lua_filepath)
         if is_filename_included(top_opts, lua_filepath) then
-            try_match_project_file_global(lua_filepath, global_define)
+            local check_save = try_match_project_file_global(lua_filepath, global_define, skip_merge)
+            if not need_save then
+                need_save = check_save
+            end
         end
     end
 
     merge_and_clean_project_global(skip_merge)
+
+    return need_save
 end
 
 local function globals2string(global_data, global_type_name, global_contents)
@@ -542,7 +598,9 @@ local function table2string(t)
     return string.format("{\n%s}", table.concat(global_contents, ""))
 end
 
-local function save_project_global_cache(cache_filepath)
+local function save_project_global_cache(cache_filepath, need_save)
+    if not need_save then return end
+
     local file_handle = io.open(cache_filepath, "w")
     if file_handle == nil then return end
 
@@ -554,15 +612,15 @@ function project.init(project_dir, top_opts)
     local abs_project_dir = fs.normalize(fs.join(fs.get_current_dir(), project_dir))
     local cache_filepath = fs.join(abs_project_dir, project_global_cache_filename)
     try_init_project_files(cache_filepath)
-    scan_project_global(abs_project_dir, top_opts)
-    save_project_global_cache(cache_filepath)
+    local need_save = scan_project_global(abs_project_dir, top_opts)
+    save_project_global_cache(cache_filepath, need_save)
 end
 
 function project.init_project(project_dir, top_opts)
     local abs_project_dir = fs.normalize(fs.join(fs.get_current_dir(), project_dir))
     local cache_filepath = fs.join(abs_project_dir, project_global_cache_filename)
     scan_project_global(abs_project_dir, top_opts, true)
-    save_project_global_cache(cache_filepath)
+    save_project_global_cache(cache_filepath, true)
     print("init project global cache file done!")
 end
 
