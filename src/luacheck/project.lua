@@ -157,7 +157,7 @@ local global_types = { ["_G"] = true, ["_ENV"] = true, }
 local function try_parse_normal_global_index_data(var_block, value_block, normal_global)
     if var_block.tag ~= "Index" then return false end
 
-    if value_block == nil or value_block.tag == "Nil" then return true end
+    if value_block == nil then return true end
 
     local global_type_node = var_block[1]
     local global_type = global_type_node[1]
@@ -181,7 +181,7 @@ local function try_find_block_var_define(block_local_var_define_stack, var_name)
 end
 
 local function try_parse_normal_global_data(var_block, value_block, is_local_env, local_var_define, block_local_var_define_stack, normal_global, custom_global, module_var_define, global_define)
-    if value_block == nil or value_block.tag == "Nil" then return end
+    if value_block == nil then return end
 
     if var_block.tag == "Id" then
         local module_var_name = var_block[1]
