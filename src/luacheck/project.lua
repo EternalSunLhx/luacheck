@@ -73,14 +73,7 @@ local function try_parse_block_local_var(sub_block, block_local_var_define)
                 block_local_var_define[var_name_node[1]] = var_name_node.line
             end
         end
-        return
     end
-
-    if tag == "If" then
-
-        return
-    end
-
 end
 
 local function for_each_block(block, is_local_env, local_var_define, block_local_var_define_stack, normal_global, custom_global, module_var_define, global_define, block_local_var_define)
