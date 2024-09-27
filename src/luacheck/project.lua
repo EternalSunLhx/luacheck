@@ -154,10 +154,8 @@ end
 
 local global_types = { ["_G"] = true, ["_ENV"] = true, }
 
-local function try_parse_normal_global_index_data(var_block, value_block, normal_global)
+local function try_parse_normal_global_index_data(var_block, normal_global)
     if var_block.tag ~= "Index" then return false end
-
-    if value_block == nil then return true end
 
     local global_type_node = var_block[1]
     local global_type = global_type_node[1]
@@ -180,21 +178,18 @@ local function try_find_block_var_define(block_local_var_define_stack, var_name)
     end
 end
 
-local function try_parse_normal_global_data(var_block, value_block, is_local_env, local_var_define, block_local_var_define_stack, normal_global, custom_global, module_var_define, global_define)
-    if value_block == nil then return end
-
-    if var_block.tag == "Id" then
-        local module_var_name = var_block[1]
-        if not is_local_env then
-            if not try_find_block_var_define(block_local_var_define_stack, module_var_name) then
-                add_global(normal_global, module_var_name, "non-standard", local_var_define)
-            end
-        else
-            if module_var_name ~= "_ENV" then
-                module_var_define[module_var_name] = var_block.line
-            end
+local function try_parse_normal_global_data(var_block, is_local_env, local_var_define, block_local_var_define_stack, normal_global, custom_global, module_var_define, global_define)
+    if var_block.tag ~= "Id" then return end
+    local module_var_name = var_block[1]
+    if not is_local_env then
+        if not try_find_block_var_define(block_local_var_define_stack, module_var_name) then
+            add_global(normal_global, module_var_name, "non-standard", local_var_define)
         end
+        return
     end
+
+    if module_var_name == "_ENV" then return end
+    module_var_define[module_var_name] = var_block.line
 end
 
 global_parse_handles["Set"] = function(set_block, is_local_env, local_var_define, block_local_var_define_stack, normal_global, custom_global, module_var_define, global_define)
@@ -210,8 +205,8 @@ global_parse_handles["Set"] = function(set_block, is_local_env, local_var_define
         end
 
         -- check function _G.xxx() end / function _ENV.xxx() end
-        if not try_parse_normal_global_index_data(var_block, value_block, normal_global) then
-            try_parse_normal_global_data(var_block, value_block, is_local_env, local_var_define, block_local_var_define_stack, normal_global, custom_global, module_var_define, global_define)
+        if not try_parse_normal_global_index_data(var_block, normal_global) then
+            try_parse_normal_global_data(var_block, is_local_env, local_var_define, block_local_var_define_stack, normal_global, custom_global, module_var_define, global_define)
         end
     end
 end
