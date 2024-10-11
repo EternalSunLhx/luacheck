@@ -513,7 +513,6 @@ local function scan_project_global(abs_project_dir, top_opts, skip_merge)
     local need_save = false
 
     for _, lua_filepath in ipairs(lua_files) do
-        lua_filepath = fs.fix_filepath(lua_filepath)
         if is_filename_included(top_opts, lua_filepath) then
             local check_save = try_match_project_file_global(lua_filepath, global_define, skip_merge)
             if not need_save then
@@ -596,17 +595,17 @@ local function save_project_global_cache(cache_filepath, need_save)
     file_handle:close()
 end
 
-function project.init(project_dir, top_opts)
+function project.init(project_dir, top_opts, cache_filepath)
     local abs_project_dir = fs.normalize(fs.join(fs.get_current_dir(), project_dir))
-    local cache_filepath = fs.join(abs_project_dir, project_global_cache_filename)
+    cache_filepath = cache_filepath or fs.join(abs_project_dir, project_global_cache_filename)
     try_init_project_files(cache_filepath)
     local need_save = scan_project_global(abs_project_dir, top_opts)
     save_project_global_cache(cache_filepath, need_save)
 end
 
-function project.init_project(project_dir, top_opts)
+function project.init_project(project_dir, top_opts, cache_filepath)
     local abs_project_dir = fs.normalize(fs.join(fs.get_current_dir(), project_dir))
-    local cache_filepath = fs.join(abs_project_dir, project_global_cache_filename)
+    cache_filepath = cache_filepath or fs.join(abs_project_dir, project_global_cache_filename)
     scan_project_global(abs_project_dir, top_opts, true)
     save_project_global_cache(cache_filepath, true)
     print("init project global cache file done!")
