@@ -15,14 +15,6 @@ local function ensure_dir_sep(path)
    return path
 end
 
-function fs.fix_filepath(path)
-   if utils.is_windows then
-      return path:lower()
-   end
-
-   return path
-end
-
 function fs.split_base(path)
    if utils.is_windows then
       if path:match("^%a:\\") then
@@ -92,7 +84,7 @@ function fs.normalize(path)
    end
    path = anchor..table.concat(parts, utils.dir_sep)
    if path == '' then path = '.' end
-   return fs.fix_filepath(path)
+   return path
 end
 
 local function join_two_paths(base, path)
