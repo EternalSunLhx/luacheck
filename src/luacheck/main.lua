@@ -190,6 +190,7 @@ Links:
    parser:mutex(config_opt, no_config_opt)
 
    parser:option("--projectdir", "Path to project directory. Check global module or class."):argname "<projectdir>"
+   parser:option("--cachefile", "Path to lua check cache file."):argname "<cachefile>"
 
    local default_config_opt = parser:option("--default-config", ("Path to configuration file to use if --[no-]config "..
       "is not used and project-specific %s is not found. (default: %s)"):format(
@@ -304,7 +305,7 @@ local function main()
 
    if args.initproject then
       local project = require "luacheck.project"
-      local ok, error_wrapper = utils.try(project.init_project, args.initproject, checker._config_stack:get_top_options())
+      local ok, error_wrapper = utils.try(project.init_project, args.initproject, checker._config_stack:get_top_options(), args.cachefile)
       if ok then
          os.exit(exit_codes.ok)
       else
@@ -321,7 +322,7 @@ local function main()
 
    if args.projectdir then
       local project = require "luacheck.project"
-      project.init(args.projectdir, checker._config_stack:get_top_options())
+      project.init(args.projectdir, checker._config_stack:get_top_options(), args.cachefile)
    end
 
    local inputs = {}
