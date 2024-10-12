@@ -11,6 +11,8 @@ function CheckState:__init(source_bytes, filepath)
    if filepath then
       if not fs.is_absolute(filepath) then
          filepath = fs.abspath(filepath)
+      else
+         filepath = fs.normalize(filepath)
       end
    
       self.filepath = filepath
