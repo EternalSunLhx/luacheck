@@ -84,6 +84,11 @@ function fs.normalize(path)
    end
    path = anchor..table.concat(parts, utils.dir_sep)
    if path == '' then path = '.' end
+
+   if utils.is_windows then
+      path = path:gsub('/', '\\')
+   end
+
    return path
 end
 
