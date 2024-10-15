@@ -7,6 +7,7 @@ local profiler = require "luacheck.profiler"
 local runner = require "luacheck.runner"
 local utils = require "luacheck.utils"
 local version = require "luacheck.version"
+local fs = require "luacheck.fs"
 
 local exit_codes = {
    ok = 0,
@@ -333,9 +334,9 @@ local function main()
       if file == "-" then
          input.file = io.stdin
       elseif file:find("%.rockspec$") then
-         input.rockspec_path = file
+         input.rockspec_path = fs.normalize(file)
       else
-         input.path = file
+         input.path = fs.normalize(file)
       end
 
       table.insert(inputs, input)
